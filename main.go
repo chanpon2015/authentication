@@ -6,6 +6,7 @@ import (
 	"github.com/chanpon2015/authentication/infra"
 	"github.com/chanpon2015/authentication/model"
 	"github.com/chanpon2015/authentication/usecase/auth"
+	jwt "github.com/dgrijalva/jwt-go"
 )
 
 func main() {
@@ -20,7 +21,9 @@ func main() {
 	db, err := infra.Open(&psql)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
+	defer db.Close()
 	fmt.Println("connect!")
 	db.AutoMigrate(&model.User{})
 	if err := auth.Add(db, "aaaa", "bbbb", "cccc"); err != nil {
@@ -33,5 +36,25 @@ func main() {
 	fmt.Println(result)
 	result = auth.Authentication(db, "dddd", "bbbb")
 	fmt.Println(result)
-	defer db.Close()
+	token := jwt.NewWithClaims(
+		jwt.SigningMethodHS256,
+		jwt.MapClaims{
+			"test": "test",
+		},
+	)
+	tokenString, err := token.SignedString([]byte("test"))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	token1, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error){
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			fmt.Println(ok)
+		}
+		return []byte("test"), nil
+	})
+	if claims, ok := token1.Claims.(jwt.MapClaims); ok && token.Valid {
+		fmt.Println(claims["test"])
+	}
+	fmt.Println(tokenString)
 }
